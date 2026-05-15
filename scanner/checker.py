@@ -5,6 +5,8 @@ Check whether X (Twitter) handles exist using the Apify actor:
 Runs checks concurrently using a thread pool to stay within free-tier limits.
 """
 
+from __future__ import annotations
+
 import os
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -13,23 +15,20 @@ from typing import Any
 from apify_client import ApifyClient
 
 ACTOR_ID = "logical_scrapers/x-twitter-user-profile-tweets-scraper"
-APIFY_API_TOKEN = os.getenv("APIFY_API_TOKEN", "")
 
 
 def _get_client() -> ApifyClient:
-    if not APIFY_API_TOKEN:
+    # Read token here (not at module level) so dotenv has already run
+    token = os.getenv("APIFY_API_TOKEN", "")
+    if not token:
         raise EnvironmentError(
             "APIFY_API_TOKEN is not set. "
             "Copy .env.example to .env and add your token."
         )
-    return ApifyClient(APIFY_API_TOKEN)
+    return ApifyClient(token)
 
 
 def check_single_handle(original: str, variant: str) -> dict[str, Any]:
-    """
-    Check one variant handle via Apify.
-    Returns a result dict regardless of whether the account exists.
-    """
     client = _get_client()
     result: dict[str, Any] = {
         "original_handle": original,
@@ -50,7 +49,7 @@ def check_single_handle(original: str, variant: str) -> dict[str, Any]:
         run = client.actor(ACTOR_ID).call(
             run_input={
                 "username": variant,
-                "maxTweets": 5,        # fetch a few recent tweets
+                "maxTweets": 5,
                 "addUserInfo": True,
             },
             timeout_secs=120,
@@ -61,9 +60,8 @@ def check_single_handle(original: str, variant: str) -> dict[str, Any]:
         )
 
         if not items:
-            return result  # handle does not exist or is private
+            return result
 
-        # First item is user profile info + tweets
         user = items[0]
 
         result["exists"] = True
@@ -75,7 +73,6 @@ def check_single_handle(original: str, variant: str) -> dict[str, Any]:
         result["created_at"] = user.get("createdAt") or user.get("created_at")
         result["verified"] = user.get("verified", False)
 
-        # Collect tweet texts
         tweets = user.get("tweets") or []
         result["recent_tweets"] = [
             {
@@ -97,10 +94,6 @@ def check_handles_batch(
     all_variants: dict[str, list[str]],
     concurrency: int = 5,
 ) -> list[dict[str, Any]]:
-    """
-    Check all variants for all original handles concurrently.
-    Returns a flat list of result dicts.
-    """
     tasks: list[tuple[str, str]] = []
     for original, variants in all_variants.items():
         for variant in variants:

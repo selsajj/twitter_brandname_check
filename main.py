@@ -4,6 +4,8 @@ X (Twitter) Impersonation Scanner
 Generates handle variants and checks which ones exist on X using Apify.
 """
 
+from __future__ import annotations
+
 import argparse
 import sys
 from pathlib import Path

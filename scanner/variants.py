@@ -2,8 +2,10 @@
 Generate likely impersonation variants of a given X/Twitter handle.
 """
 
+from __future__ import annotations
+
 import re
-from itertools import product
+from itertools import combinations
 
 # Character substitution map (leet-speak and lookalikes)
 CHAR_SUBS: dict[str, list[str]] = {
@@ -21,7 +23,7 @@ CHAR_SUBS: dict[str, list[str]] = {
 PREFIXES = ["real", "official", "the", "its", "i_am", "im", "actual", "true"]
 SUFFIXES = ["real", "official", "hq", "co", "org", "inc", "tv", "official", "account"]
 
-# X handle rules: 4–15 chars, alphanumeric + underscore only
+# X handle rules: 1–15 chars, alphanumeric + underscore only
 HANDLE_RE = re.compile(r"^[A-Za-z0-9_]{1,15}$")
 
 
@@ -41,7 +43,7 @@ def _char_sub_variants(handle: str) -> list[str]:
 
 
 def _double_char_variants(handle: str) -> list[str]:
-    """Double a character (e.g., twitter → twiitter)."""
+    """Double a character (e.g., twitter -> twiitter)."""
     variants = []
     for i, ch in enumerate(handle):
         if ch.isalpha():
@@ -52,12 +54,14 @@ def _double_char_variants(handle: str) -> list[str]:
 
 
 def _drop_char_variants(handle: str) -> list[str]:
-    """Drop a single character."""
+    """Drop 1, 2, or 3 characters (all combinations of positions)."""
     variants = []
-    for i in range(len(handle)):
-        variant = handle[:i] + handle[i + 1:]
-        if len(variant) >= 1:
-            variants.append(variant)
+    for n_drops in range(1, 4):  # 1, 2, 3 characters dropped
+        for positions in combinations(range(len(handle)), n_drops):
+            pos_set = set(positions)
+            variant = "".join(ch for i, ch in enumerate(handle) if i not in pos_set)
+            if len(variant) >= 1:
+                variants.append(variant)
     return variants
 
 
@@ -72,14 +76,12 @@ def _swap_adjacent_variants(handle: str) -> list[str]:
 
 
 def _underscore_variants(handle: str) -> list[str]:
-    """Add/remove underscores between words detected by case or existing underscores."""
+    """Add/remove underscores."""
     variants = []
-    # Add underscore before each character position
     for i in range(1, len(handle)):
         v = handle[:i] + "_" + handle[i:]
         if len(v) <= 15:
             variants.append(v)
-    # Remove existing underscores
     if "_" in handle:
         variants.append(handle.replace("_", ""))
     return variants

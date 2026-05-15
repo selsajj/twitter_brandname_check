@@ -2,6 +2,8 @@
 Generate JSON and CSV reports from scan results.
 """
 
+from __future__ import annotations
+
 import csv
 import json
 from datetime import datetime, timezone
